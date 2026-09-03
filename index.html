@@ -16,29 +16,59 @@
       <p class="subtitle">Pick a difficulty and theme, then start your maze adventure!</p>
 
       <div class="section-block">
-        <h2>Difficulty</h2>
-        <div class="btn-grid">
+        <h2><span class="section-icon">🎯</span>Difficulty</h2>
+        <div class="btn-grid" id="difficulty-grid">
+          <button type="button" class="diff-btn" data-diff="minimal">
+            <span class="diff-title">Minimal</span>
+            <span class="diff-desc">5 × 5 · Extra gentle</span>
+          </button>
           <button type="button" class="diff-btn" data-diff="easy">
             <span class="diff-title">Easy</span>
             <span class="diff-desc">7 × 7 · Beginner friendly</span>
-            <span class="diff-best" data-best="easy">No record yet</span>
           </button>
           <button type="button" class="diff-btn" data-diff="medium">
             <span class="diff-title">Medium</span>
             <span class="diff-desc">12 × 12 · Balanced challenge</span>
-            <span class="diff-best" data-best="medium">No record yet</span>
           </button>
           <button type="button" class="diff-btn" data-diff="hard">
             <span class="diff-title">Hard</span>
             <span class="diff-desc">18 × 18 · Expert level</span>
-            <span class="diff-best" data-best="hard">No record yet</span>
           </button>
         </div>
       </div>
 
       <div class="section-block">
-        <h2>Theme</h2>
+        <h2><span class="section-icon">🎨</span>Theme</h2>
         <div class="btn-grid" id="theme-picker"></div>
+      </div>
+
+      <div class="section-block">
+        <h2><span class="section-icon">🖼️</span>Personalize <span class="optional-tag">(optional)</span></h2>
+        <p class="hint-text">Upload familiar photos — a loved one, an old home — to use as the maze's goal marker and background.</p>
+        <div class="photo-picker-row">
+          <div class="photo-picker">
+            <div class="photo-dropzone" id="goal-photo-dropzone">
+              <label for="goal-photo-input" class="photo-dropzone-label">
+                <img id="goal-photo-preview" class="photo-preview-img hidden" alt="Goal photo preview" />
+                <span class="photo-dropzone-placeholder">📷<br />Upload</span>
+              </label>
+              <button type="button" id="btn-remove-photo" class="photo-remove-btn hidden" aria-label="Remove goal photo">✕</button>
+            </div>
+            <span class="photo-picker-caption">Goal marker</span>
+            <input type="file" id="goal-photo-input" accept="image/*" class="visually-hidden" />
+          </div>
+          <div class="photo-picker">
+            <div class="photo-dropzone" id="bg-photo-dropzone">
+              <label for="bg-photo-input" class="photo-dropzone-label">
+                <img id="bg-photo-preview" class="photo-preview-img hidden" alt="Background photo preview" />
+                <span class="photo-dropzone-placeholder">🖼️<br />Upload</span>
+              </label>
+              <button type="button" id="btn-remove-bg-photo" class="photo-remove-btn hidden" aria-label="Remove background photo">✕</button>
+            </div>
+            <span class="photo-picker-caption">Background</span>
+            <input type="file" id="bg-photo-input" accept="image/*" class="visually-hidden" />
+          </div>
+        </div>
       </div>
 
       <div class="section-block a11y-row">
@@ -46,9 +76,13 @@
           <input type="checkbox" id="a11y-toggle" />
           <span>Accessibility large-text mode</span>
         </label>
+        <label class="switch-label">
+          <input type="checkbox" id="voice-toggle" />
+          <span>🔊 Voice encouragement</span>
+        </label>
       </div>
 
-      <button type="button" id="btn-start" class="btn-primary">Start Game</button>
+      <button type="button" id="btn-start" class="btn-primary">▶ Start Game</button>
     </div>
   </section>
 
@@ -58,36 +92,34 @@
       <div class="hud-info">
         <span id="current-theme-name"></span> · <span id="current-diff-name"></span>
       </div>
-      <div class="hud-stats">
-        <span class="hud-chip">⏱ <span id="hud-time">00:00</span></span>
-        <span class="hud-chip">👣 <span id="hud-moves">0</span></span>
-      </div>
       <div class="hud-actions">
         <button type="button" id="btn-hint" class="btn-icon" title="Show hint path">💡 Hint</button>
-        <button type="button" id="btn-restart" class="btn-icon" title="Generate a new maze">🔄 Restart</button>
+        <button type="button" id="btn-restart" class="btn-icon" title="Try a different maze">✨ New Maze</button>
         <button type="button" id="btn-menu" class="btn-icon" title="Back to main menu">🏠 Menu</button>
       </div>
     </header>
 
-    <div id="canvas-wrap">
-      <canvas id="maze-canvas"></canvas>
-    </div>
+    <div class="play-area">
+      <div id="canvas-wrap">
+        <canvas id="maze-canvas"></canvas>
+      </div>
 
-    <div class="dpad">
-      <button type="button" class="dpad-btn dpad-up" data-dx="0" data-dy="-1" aria-label="Up">▲</button>
-      <button type="button" class="dpad-btn dpad-left" data-dx="-1" data-dy="0" aria-label="Left">◀</button>
-      <button type="button" class="dpad-btn dpad-right" data-dx="1" data-dy="0" aria-label="Right">▶</button>
-      <button type="button" class="dpad-btn dpad-down" data-dx="0" data-dy="1" aria-label="Down">▼</button>
+      <div class="dpad">
+        <button type="button" class="dpad-btn dpad-up" data-dx="0" data-dy="-1" aria-label="Up">▲</button>
+        <button type="button" class="dpad-btn dpad-left" data-dx="-1" data-dy="0" aria-label="Left">◀</button>
+        <button type="button" class="dpad-btn dpad-right" data-dx="1" data-dy="0" aria-label="Right">▶</button>
+        <button type="button" class="dpad-btn dpad-down" data-dx="0" data-dy="1" aria-label="Down">▼</button>
+      </div>
     </div>
   </section>
 
   <!-- Win modal -->
   <div id="modal-win" class="modal hidden">
+    <canvas id="fireworks-canvas" class="fireworks-canvas"></canvas>
     <div class="modal-card">
-      <h2>🎉 You Made It!</h2>
-      <p id="win-stars" class="win-stars"></p>
-      <p id="win-stats" class="win-stats"></p>
-      <p id="win-best-badge" class="best-badge hidden">🏆 New Record!</p>
+      <div id="win-celebration" class="celebration"></div>
+      <h2>🎉 You Did It!</h2>
+      <p class="win-message">Amazing job — you found your way!</p>
       <div class="modal-actions">
         <button type="button" id="btn-win-again" class="btn-primary">Play Again</button>
         <button type="button" id="btn-win-menu" class="btn-secondary">Back to Menu</button>
@@ -100,6 +132,7 @@
 <script src="js/maze.js"></script>
 <script src="js/themes.js"></script>
 <script src="js/game.js"></script>
+<script src="js/fireworks.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

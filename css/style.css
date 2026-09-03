@@ -2,8 +2,12 @@
   --bg-page: #f4f1e8;
   --text-main: #2b2b2b;
   --accent: #3f6b2c;
+  --accent-soft: #e5f0dc;
   --card-bg: #ffffff;
+  --panel-bg: #faf8f0;
+  --panel-border: #eae4d2;
   --radius: 16px;
+  --radius-sm: 10px;
   font-size: 18px;
 }
 
@@ -15,7 +19,7 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: var(--bg-page);
+  background: linear-gradient(160deg, #f7f4ea 0%, #eef1e2 45%, #e9efe3 100%);
   color: var(--text-main);
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
@@ -29,6 +33,7 @@ html, body {
   display: none;
   height: 100%;
   overflow-y: auto;
+  position: relative;
 }
 
 .screen.active {
@@ -36,7 +41,7 @@ html, body {
   flex-direction: column;
 }
 
-/* ---------- 开始界面 ---------- */
+/* ---------- Start screen ---------- */
 
 #screen-start {
   align-items: center;
@@ -48,8 +53,8 @@ html, body {
   width: 100%;
   background: var(--card-bg);
   border-radius: var(--radius);
-  padding: 24px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  padding: 28px;
+  box-shadow: 0 10px 30px rgba(63, 90, 40, 0.1), 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .panel h1 {
@@ -61,22 +66,49 @@ html, body {
 .subtitle {
   text-align: center;
   color: #666;
-  margin: 0 0 20px;
+  margin: 0 0 24px;
 }
 
 .section-block {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
 }
 
 .section-block h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 1.1em;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
+}
+
+.section-icon {
+  font-size: 1.15em;
 }
 
 .btn-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
+}
+
+#difficulty-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 560px) {
+  #difficulty-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+#theme-picker {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .diff-btn {
@@ -86,21 +118,23 @@ html, body {
   gap: 4px;
   padding: 16px 10px;
   border: 3px solid transparent;
-  border-radius: var(--radius);
-  background: #f0eee2;
+  border-radius: var(--radius-sm);
+  background: #ffffff;
   cursor: pointer;
   min-height: 56px;
   font-size: 1em;
-  transition: transform 0.1s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .diff-btn:hover {
   transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
 .diff-btn.selected {
   border-color: var(--accent);
-  background: #e5f0dc;
+  background: var(--accent-soft);
 }
 
 .diff-title {
@@ -113,24 +147,29 @@ html, body {
   font-size: 0.85em;
 }
 
-.diff-best {
-  font-size: 0.8em;
-  color: var(--accent);
-}
-
 .theme-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  flex: 1 1 150px;
+  max-width: 190px;
   padding: 16px 10px;
   min-height: 56px;
   border: 3px solid transparent;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: #1a1a1a;
   font-weight: 600;
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.theme-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 .theme-btn.selected {
@@ -141,9 +180,114 @@ html, body {
   font-size: 1.8em;
 }
 
-.a11y-row {
+.optional-tag {
+  font-size: 0.7em;
+  font-weight: 400;
+  color: #888;
+}
+
+.hint-text {
+  font-size: 0.9em;
+  color: #666;
+  margin: 0 0 10px;
+}
+
+.photo-picker-row {
   display: flex;
   justify-content: center;
+  gap: 28px;
+}
+
+.photo-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.photo-dropzone {
+  position: relative;
+  width: 96px;
+  height: 96px;
+}
+
+.photo-dropzone-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: 2px dashed #c9c2a6;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.photo-dropzone-label:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.photo-dropzone-placeholder {
+  font-size: 0.75em;
+  line-height: 1.5;
+  color: #888;
+  text-align: center;
+}
+
+.photo-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-preview-img.hidden {
+  display: none;
+}
+
+.photo-remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 26px;
+  height: 26px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #a33;
+  color: #fff;
+  font-size: 0.8em;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.photo-remove-btn.hidden {
+  display: none;
+}
+
+.photo-picker-caption {
+  font-size: 0.8em;
+  color: #777;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.a11y-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
 }
 
 .switch-label {
@@ -169,11 +313,18 @@ html, body {
   border-radius: var(--radius);
   cursor: pointer;
   min-height: 56px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn-primary {
   background: var(--accent);
   color: #fff;
+  box-shadow: 0 4px 12px rgba(63, 107, 44, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(63, 107, 44, 0.38);
 }
 
 .btn-secondary {
@@ -181,7 +332,11 @@ html, body {
   color: var(--text-main);
 }
 
-/* ---------- 游戏界面 ---------- */
+.btn-secondary:hover {
+  background: #dcd8c8;
+}
+
+/* ---------- Game screen ---------- */
 
 .hud {
   display: flex;
@@ -189,25 +344,14 @@ html, body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   background: #222;
   color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .hud-info {
   font-weight: 600;
-}
-
-.hud-stats {
-  display: flex;
-  gap: 12px;
-  font-size: 1.05em;
-}
-
-.hud-chip {
-  background: rgba(255, 255, 255, 0.12);
-  padding: 4px 10px;
-  border-radius: 10px;
 }
 
 .hud-actions {
@@ -230,13 +374,28 @@ html, body {
   background: #555;
 }
 
+.play-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  margin: 16px;
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  padding: 16px;
+}
+
 #canvas-wrap {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
+  padding: 8px;
   min-height: 0;
+  width: 100%;
   touch-action: none;
 }
 
@@ -251,7 +410,7 @@ html, body {
   grid-template-rows: 60px 60px;
   justify-content: center;
   gap: 6px;
-  padding: 10px 0 20px;
+  padding: 14px 0 4px;
 }
 
 .dpad-btn {
@@ -274,7 +433,7 @@ html, body {
 .dpad-right { grid-column: 3; grid-row: 2; }
 .dpad-down { grid-column: 2; grid-row: 2; }
 
-/* ---------- 通关弹窗 ---------- */
+/* ---------- Win modal ---------- */
 
 .modal {
   position: fixed;
@@ -290,36 +449,87 @@ html, body {
   display: none;
 }
 
+.fireworks-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .modal-card {
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
   background: #fff;
   border-radius: var(--radius);
   padding: 28px;
   max-width: 400px;
   width: 100%;
   text-align: center;
+  animation: modalPopIn 0.5s ease-out;
 }
 
 .modal-card h2 {
   margin-top: 0;
 }
 
-.win-stars {
-  font-size: 2em;
-  margin: 8px 0;
+.celebration {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
 }
 
-.win-stats {
-  font-size: 1.1em;
+.celebration .drifter {
+  position: absolute;
+  bottom: -15%;
+  font-size: 2.2em;
+  opacity: 0;
+  animation: floatUp 4.5s ease-out forwards;
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-320px) translateX(var(--drift, 0px));
+    opacity: 0;
+  }
+}
+
+@keyframes modalPopIn {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-card {
+    animation: none;
+  }
+  .celebration,
+  .fireworks-canvas {
+    display: none;
+  }
+}
+
+.win-message {
+  font-size: 1.15em;
   color: #444;
-}
-
-.best-badge {
-  color: #b8860b;
-  font-weight: 700;
-}
-
-.best-badge.hidden {
-  display: none;
+  margin: 10px 0 4px;
 }
 
 .modal-actions {
@@ -329,7 +539,7 @@ html, body {
   margin-top: 16px;
 }
 
-/* ---------- 无障碍大字体模式 ---------- */
+/* ---------- Accessibility large-text mode ---------- */
 
 body.a11y-mode {
   font-size: 22px;
@@ -356,6 +566,12 @@ body.a11y-mode .dpad {
 @media (max-width: 480px) {
   .panel {
     padding: 18px;
+  }
+  .panel h1 {
+    font-size: 1.6em;
+  }
+  .theme-btn {
+    flex: 1 1 40%;
   }
   .hud {
     font-size: 0.9em;

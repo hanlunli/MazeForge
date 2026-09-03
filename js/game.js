@@ -1,6 +1,7 @@
-// Game runtime logic: rendering, input, timer, hints, win detection
+// Game runtime logic: rendering, input, hints, win detection
 
 const DIFFICULTIES = {
+  minimal: { label: 'Minimal', cols: 5, rows: 5 },
   easy: { label: 'Easy', cols: 7, rows: 7 },
   medium: { label: 'Medium', cols: 12, rows: 12 },
   hard: { label: 'Hard', cols: 18, rows: 18 },
@@ -12,8 +13,9 @@ class MazeGame {
     this.ctx = canvas.getContext('2d');
     this.difficulty = options.difficulty;
     this.theme = options.theme;
+    this.goalImage = options.goalImage || null;
+    this.bgImage = options.bgImage || null;
     this.onWin = options.onWin || function () {};
-    this.onTick = options.onTick || function () {};
 
     this.hintTimeoutId = null;
     this.hintPath = null;
@@ -30,15 +32,11 @@ class MazeGame {
     this.rows = rows;
     this.grid = MazeCore.generateMaze(cols, rows);
     this.start = { x: 0, y: 0 };
-    const { cell, dist } = MazeCore.farthestCell(this.grid, this.start);
+    const { cell } = MazeCore.farthestCell(this.grid, this.start);
     this.goal = cell;
-    this.optimalMoves = dist;
 
     this.player = { x: this.start.x, y: this.start.y };
     this.visited = new Set([this._key(this.start)]);
-    this.moves = 0;
-    this.elapsedMs = 0;
-    this.running = false;
     this.finished = false;
     this.hintPath = null;
     if (this.hintTimeoutId) {
@@ -47,12 +45,20 @@ class MazeGame {
     }
 
     this.resize();
-    this._tickTimer();
-    this.onTick(this.getStats());
   }
 
   setTheme(themeId) {
     this.theme = themeId;
+    this.draw();
+  }
+
+  setGoalImage(image) {
+    this.goalImage = image;
+    this.draw();
+  }
+
+  setBgImage(image) {
+    this.bgImage = image;
     this.draw();
   }
 
@@ -79,26 +85,6 @@ class MazeGame {
     this.draw();
   }
 
-  _tickTimer() {
-    if (this._timerInterval) clearInterval(this._timerInterval);
-    this._lastTs = performance.now();
-    this._timerInterval = setInterval(() => {
-      if (this.running && !this.finished) {
-        const now = performance.now();
-        this.elapsedMs += now - this._lastTs;
-        this._lastTs = now;
-        this.onTick(this.getStats());
-      }
-    }, 250);
-  }
-
-  getStats() {
-    const totalSeconds = Math.floor(this.elapsedMs / 1000);
-    const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
-    const ss = String(totalSeconds % 60).padStart(2, '0');
-    return { time: `${mm}:${ss}`, moves: this.moves, seconds: totalSeconds };
-  }
-
   move(dx, dy) {
     if (this.finished) return;
     const dir =
@@ -107,24 +93,16 @@ class MazeGame {
     const cell = this.grid[this.player.y][this.player.x];
     if (cell[dir]) return; // blocked by a wall
 
-    if (!this.running) {
-      this.running = true;
-      this._lastTs = performance.now();
-    }
-
     this.player.x += dx;
     this.player.y += dy;
-    this.moves += 1;
     this.visited.add(this._key(this.player));
     this.hintPath = null;
 
     this.draw();
-    this.onTick(this.getStats());
 
     if (this.player.x === this.goal.x && this.player.y === this.goal.y) {
       this.finished = true;
-      this.running = false;
-      this.onWin({ ...this.getStats(), optimalMoves: this.optimalMoves });
+      this.onWin();
     }
   }
 
@@ -142,7 +120,6 @@ class MazeGame {
 
   destroy() {
     window.removeEventListener('resize', this._boundResize);
-    if (this._timerInterval) clearInterval(this._timerInterval);
     if (this.hintTimeoutId) clearTimeout(this.hintTimeoutId);
   }
 
@@ -154,8 +131,23 @@ class MazeGame {
     const h = this.rows * size;
 
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = theme.path;
-    ctx.fillRect(0, 0, w, h);
+
+    if (this.bgImage) {
+      const scale = Math.max(w / this.bgImage.width, h / this.bgImage.height);
+      const sw = w / scale;
+      const sh = h / scale;
+      const sx = (this.bgImage.width - sw) / 2;
+      const sy = (this.bgImage.height - sh) / 2;
+      ctx.drawImage(this.bgImage, sx, sy, sw, sh, 0, 0, w, h);
+      // Dim the photo so walls and icons stay legible on top of it
+      ctx.globalAlpha = 0.72;
+      ctx.fillStyle = theme.path;
+      ctx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.fillStyle = theme.path;
+      ctx.fillRect(0, 0, w, h);
+    }
 
     // Faintly shade visited cells so the player can see where they've been
     ctx.fillStyle = theme.visited;
@@ -207,11 +199,29 @@ class MazeGame {
     // Outer border
     ctx.strokeRect(1, 1, w - 2, h - 2);
 
-    // Goal
-    ctx.font = `${size * 0.7}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(theme.goal, this.goal.x * size + size / 2, this.goal.y * size + size / 2);
+
+    // Goal
+    if (this.goalImage) {
+      const gx = this.goal.x * size;
+      const gy = this.goal.y * size;
+      const pad = size * 0.1;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(gx + size / 2, gy + size / 2, size / 2 - pad, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(this.goalImage, gx + pad, gy + pad, size - pad * 2, size - pad * 2);
+      ctx.restore();
+      ctx.strokeStyle = theme.accent;
+      ctx.lineWidth = Math.max(2, size * 0.06);
+      ctx.beginPath();
+      ctx.arc(gx + size / 2, gy + size / 2, size / 2 - pad, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      ctx.font = `${size * 0.7}px sans-serif`;
+      ctx.fillText(theme.goal, this.goal.x * size + size / 2, this.goal.y * size + size / 2);
+    }
 
     // Player
     ctx.font = `${size * 0.75}px sans-serif`;

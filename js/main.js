@@ -1,15 +1,21 @@
 // Page interaction and state management: start screen, game screen, win modal
 
 const STORAGE_KEY = 'mazeforge.settings.v1';
-const BEST_KEY = 'mazeforge.best.v1';
+const GOAL_PHOTO_KEY = 'mazeforge.goalPhoto.v1';
+const GOAL_PHOTO_SIZE = 160;
+const BG_PHOTO_KEY = 'mazeforge.bgPhoto.v1';
+const BG_PHOTO_SIZE = 320;
 
 const state = {
   difficulty: 'easy',
   theme: 'forest',
   a11y: false,
+  voice: true,
 };
 
 let game = null;
+const fireworks = new Fireworks(document.getElementById('fireworks-canvas'));
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function loadSettings() {
   try {
@@ -23,37 +29,102 @@ function loadSettings() {
 function saveSettings() {
   localStorage.setItem(
     STORAGE_KEY,
-    JSON.stringify({ difficulty: state.difficulty, theme: state.theme, a11y: state.a11y })
+    JSON.stringify({
+      difficulty: state.difficulty,
+      theme: state.theme,
+      a11y: state.a11y,
+      voice: state.voice,
+    })
   );
 }
 
-function loadBestTimes() {
-  try {
-    return JSON.parse(localStorage.getItem(BEST_KEY) || '{}');
-  } catch (e) {
-    return {};
+// Shared upload/crop/persist pipeline for the goal-photo and background-photo slots
+function createPhotoUploader({ storageKey, size, previewId, removeBtnId, onChange }) {
+  function setPreview(dataUrl) {
+    const preview = document.getElementById(previewId);
+    const removeBtn = document.getElementById(removeBtnId);
+    if (dataUrl) {
+      preview.src = dataUrl;
+      preview.classList.remove('hidden');
+      removeBtn.classList.remove('hidden');
+    } else {
+      preview.classList.add('hidden');
+      removeBtn.classList.add('hidden');
+    }
   }
+
+  function loadImage(dataUrl) {
+    const img = new Image();
+    img.onload = () => {
+      uploader.image = img;
+      onChange(img);
+    };
+    img.src = dataUrl;
+  }
+
+  function handleFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        // Crop to a centered square and downscale so localStorage stays small
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        localStorage.setItem(storageKey, dataUrl);
+        setPreview(dataUrl);
+        loadImage(dataUrl);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function remove() {
+    localStorage.removeItem(storageKey);
+    uploader.image = null;
+    setPreview(null);
+    onChange(null);
+  }
+
+  function init() {
+    const dataUrl = localStorage.getItem(storageKey);
+    if (dataUrl) {
+      setPreview(dataUrl);
+      loadImage(dataUrl);
+    }
+  }
+
+  const uploader = { image: null, handleFile, remove, init };
+  return uploader;
 }
 
-function saveBestTime(difficulty, stats) {
-  const best = loadBestTimes();
-  const current = best[difficulty];
-  if (!current || stats.seconds < current.seconds) {
-    best[difficulty] = { seconds: stats.seconds, time: stats.time, moves: stats.moves };
-    localStorage.setItem(BEST_KEY, JSON.stringify(best));
-    return true;
-  }
-  return false;
-}
+const goalPhoto = createPhotoUploader({
+  storageKey: GOAL_PHOTO_KEY,
+  size: GOAL_PHOTO_SIZE,
+  previewId: 'goal-photo-preview',
+  removeBtnId: 'btn-remove-photo',
+  onChange: (img) => {
+    if (game) game.setGoalImage(img);
+  },
+});
 
-function renderBestTimes() {
-  const best = loadBestTimes();
-  for (const key of Object.keys(DIFFICULTIES)) {
-    const el = document.querySelector(`[data-best="${key}"]`);
-    if (!el) continue;
-    el.textContent = best[key] ? `Best: ${best[key].time} · ${best[key].moves} moves` : 'No record yet';
-  }
-}
+const bgPhoto = createPhotoUploader({
+  storageKey: BG_PHOTO_KEY,
+  size: BG_PHOTO_SIZE,
+  previewId: 'bg-photo-preview',
+  removeBtnId: 'btn-remove-bg-photo',
+  onChange: (img) => {
+    if (game) game.setBgImage(img);
+  },
+});
 
 function buildThemePicker() {
   const wrap = document.getElementById('theme-picker');
@@ -97,21 +168,59 @@ function applyA11y() {
   document.getElementById('a11y-toggle').checked = state.a11y;
 }
 
+function applyVoiceToggle() {
+  document.getElementById('voice-toggle').checked = state.voice;
+}
+
+const WIN_PHRASES = ['Well done!', "You've completed today's task!", 'Great job!'];
+
+// Preferred voice names, best-sounding first. System TTS voices vary a lot
+// in quality — these are the higher-quality options browsers commonly ship
+// (Edge/Chrome "Natural"/Google voices) over the default robotic SAPI voice.
+const PREFERRED_VOICE_NAMES = [
+  'Microsoft Aria Online (Natural) - English (United States)',
+  'Microsoft Jenny Online (Natural) - English (United States)',
+  'Google US English',
+  'Samantha',
+  'Microsoft Zira - English (United States)',
+];
+
+let cachedVoices = [];
+
+function refreshVoiceCache() {
+  if ('speechSynthesis' in window) {
+    cachedVoices = speechSynthesis.getVoices();
+  }
+}
+
+function pickBestVoice() {
+  for (const name of PREFERRED_VOICE_NAMES) {
+    const match = cachedVoices.find((v) => v.name === name);
+    if (match) return match;
+  }
+  const natural = cachedVoices.find((v) => /natural/i.test(v.name) && v.lang.startsWith('en'));
+  if (natural) return natural;
+  const google = cachedVoices.find((v) => /google/i.test(v.name) && v.lang.startsWith('en'));
+  if (google) return google;
+  return cachedVoices.find((v) => v.lang === 'en-US') || null;
+}
+
+function speakEncouragement() {
+  if (!state.voice || !('speechSynthesis' in window)) return;
+  const text = WIN_PHRASES[Math.floor(Math.random() * WIN_PHRASES.length)];
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'en-US';
+  utterance.rate = 0.9;
+  utterance.pitch = 1.05;
+  const voice = pickBestVoice();
+  if (voice) utterance.voice = voice;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utterance);
+}
+
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-}
-
-function formatStats(stats) {
-  return `${stats.time} · ${stats.moves} moves`;
-}
-
-function starsFor(stats) {
-  if (!stats.optimalMoves) return 3;
-  const ratio = stats.moves / Math.max(stats.optimalMoves, 1);
-  if (ratio <= 1.2) return 3;
-  if (ratio <= 1.8) return 2;
-  return 1;
 }
 
 function startGame() {
@@ -126,28 +235,39 @@ function startGame() {
   game = new MazeGame(canvas, {
     difficulty: state.difficulty,
     theme: state.theme,
-    onTick: (stats) => updateHud(stats),
-    onWin: (stats) => showWin(stats),
+    goalImage: goalPhoto.image,
+    bgImage: bgPhoto.image,
+    onWin: () => showWin(),
   });
-  updateHud(game.getStats());
 }
 
-function updateHud(stats) {
-  document.getElementById('hud-time').textContent = stats.time;
-  document.getElementById('hud-moves').textContent = stats.moves;
+const CELEBRATION_EMOJI = ['🎈', '🌸', '🎈', '🌼', '🎈'];
+
+function playWinCelebration() {
+  const container = document.getElementById('win-celebration');
+  container.innerHTML = '';
+  CELEBRATION_EMOJI.forEach((emoji, i) => {
+    const span = document.createElement('span');
+    span.className = 'drifter';
+    span.textContent = emoji;
+    span.style.left = `${8 + i * 20 + (Math.random() * 8 - 4)}%`;
+    span.style.animationDelay = `${i * 0.35}s`;
+    span.style.setProperty('--drift', `${Math.round(Math.random() * 30 - 15)}px`);
+    container.appendChild(span);
+  });
 }
 
-function showWin(stats) {
-  const isBest = saveBestTime(state.difficulty, stats);
-  document.getElementById('win-stats').textContent = formatStats(stats);
-  document.getElementById('win-stars').textContent = '⭐'.repeat(starsFor(stats));
-  document.getElementById('win-best-badge').classList.toggle('hidden', !isBest);
+function showWin() {
   document.getElementById('modal-win').classList.remove('hidden');
-  renderBestTimes();
+  playWinCelebration();
+  speakEncouragement();
+  if (!prefersReducedMotion) fireworks.start();
 }
 
 function hideWin() {
   document.getElementById('modal-win').classList.add('hidden');
+  fireworks.stop();
+  document.getElementById('win-celebration').innerHTML = '';
 }
 
 function bindControls() {
@@ -161,13 +281,27 @@ function bindControls() {
     applyA11y();
   });
 
+  document.getElementById('voice-toggle').addEventListener('change', (e) => {
+    state.voice = e.target.checked;
+    saveSettings();
+  });
+
   document.getElementById('btn-start').addEventListener('click', startGame);
+
+  document.getElementById('goal-photo-input').addEventListener('change', (e) => {
+    goalPhoto.handleFile(e.target.files[0]);
+  });
+  document.getElementById('btn-remove-photo').addEventListener('click', goalPhoto.remove);
+
+  document.getElementById('bg-photo-input').addEventListener('change', (e) => {
+    bgPhoto.handleFile(e.target.files[0]);
+  });
+  document.getElementById('btn-remove-bg-photo').addEventListener('click', bgPhoto.remove);
 
   document.getElementById('btn-hint').addEventListener('click', () => game && game.showHint());
   document.getElementById('btn-restart').addEventListener('click', () => game && game.newMaze());
   document.getElementById('btn-menu').addEventListener('click', () => {
     showScreen('screen-start');
-    renderBestTimes();
   });
 
   document.getElementById('btn-win-again').addEventListener('click', () => {
@@ -177,7 +311,6 @@ function bindControls() {
   document.getElementById('btn-win-menu').addEventListener('click', () => {
     hideWin();
     showScreen('screen-start');
-    renderBestTimes();
   });
 
   document.querySelectorAll('.dpad-btn').forEach((btn) => {
@@ -245,8 +378,15 @@ function init() {
   buildThemePicker();
   selectDifficulty(state.difficulty);
   applyA11y();
-  renderBestTimes();
+  applyVoiceToggle();
+  goalPhoto.init();
+  bgPhoto.init();
   bindControls();
+
+  if ('speechSynthesis' in window) {
+    refreshVoiceCache();
+    speechSynthesis.onvoiceschanged = refreshVoiceCache;
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

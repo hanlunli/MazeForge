@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>MazeForge · Maze Adventure</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- Start screen -->
+  <section id="screen-start" class="screen active">
+    <div class="panel">
+      <h1>🧩 Maze Adventure</h1>
+      <p class="subtitle">Pick a difficulty and theme, then start your maze adventure!</p>
+
+      <div class="section-block">
+        <h2>Difficulty</h2>
+        <div class="btn-grid">
+          <button type="button" class="diff-btn" data-diff="easy">
+            <span class="diff-title">Easy</span>
+            <span class="diff-desc">7 × 7 · Beginner friendly</span>
+            <span class="diff-best" data-best="easy">No record yet</span>
+          </button>
+          <button type="button" class="diff-btn" data-diff="medium">
+            <span class="diff-title">Medium</span>
+            <span class="diff-desc">12 × 12 · Balanced challenge</span>
+            <span class="diff-best" data-best="medium">No record yet</span>
+          </button>
+          <button type="button" class="diff-btn" data-diff="hard">
+            <span class="diff-title">Hard</span>
+            <span class="diff-desc">18 × 18 · Expert level</span>
+            <span class="diff-best" data-best="hard">No record yet</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="section-block">
+        <h2>Theme</h2>
+        <div class="btn-grid" id="theme-picker"></div>
+      </div>
+
+      <div class="section-block a11y-row">
+        <label class="switch-label">
+          <input type="checkbox" id="a11y-toggle" />
+          <span>Accessibility large-text mode</span>
+        </label>
+      </div>
+
+      <button type="button" id="btn-start" class="btn-primary">Start Game</button>
+    </div>
+  </section>
+
+  <!-- Game screen -->
+  <section id="screen-game" class="screen">
+    <header class="hud">
+      <div class="hud-info">
+        <span id="current-theme-name"></span> · <span id="current-diff-name"></span>
+      </div>
+      <div class="hud-stats">
+        <span class="hud-chip">⏱ <span id="hud-time">00:00</span></span>
+        <span class="hud-chip">👣 <span id="hud-moves">0</span></span>
+      </div>
+      <div class="hud-actions">
+        <button type="button" id="btn-hint" class="btn-icon" title="Show hint path">💡 Hint</button>
+        <button type="button" id="btn-restart" class="btn-icon" title="Generate a new maze">🔄 Restart</button>
+        <button type="button" id="btn-menu" class="btn-icon" title="Back to main menu">🏠 Menu</button>
+      </div>
+    </header>
+
+    <div id="canvas-wrap">
+      <canvas id="maze-canvas"></canvas>
+    </div>
+
+    <div class="dpad">
+      <button type="button" class="dpad-btn dpad-up" data-dx="0" data-dy="-1" aria-label="Up">▲</button>
+      <button type="button" class="dpad-btn dpad-left" data-dx="-1" data-dy="0" aria-label="Left">◀</button>
+      <button type="button" class="dpad-btn dpad-right" data-dx="1" data-dy="0" aria-label="Right">▶</button>
+      <button type="button" class="dpad-btn dpad-down" data-dx="0" data-dy="1" aria-label="Down">▼</button>
+    </div>
+  </section>
+
+  <!-- Win modal -->
+  <div id="modal-win" class="modal hidden">
+    <div class="modal-card">
+      <h2>🎉 You Made It!</h2>
+      <p id="win-stars" class="win-stars"></p>
+      <p id="win-stats" class="win-stats"></p>
+      <p id="win-best-badge" class="best-badge hidden">🏆 New Record!</p>
+      <div class="modal-actions">
+        <button type="button" id="btn-win-again" class="btn-primary">Play Again</button>
+        <button type="button" id="btn-win-menu" class="btn-secondary">Back to Menu</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="js/maze.js"></script>
+<script src="js/themes.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
